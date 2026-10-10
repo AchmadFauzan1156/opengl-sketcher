@@ -1,0 +1,17 @@
+{
+  "name": "opengl-sketcher",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npx tauri dev",
+    "build": "npx tauri build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.1"
+  }
+}
