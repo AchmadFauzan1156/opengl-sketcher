@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "dev": "npx tauri dev",
-    "build": "npx tauri build"
+    "build": "npx tauri build",
+    "test": "node --test \"tests/*.test.js\"",
+    "check": "node --check web/geometry.js && node --check web/viewport.js && node --check web/editor.js && node --check web/shortcuts.js && node --check web/app.js"
   },
   "keywords": [],
   "author": "",
