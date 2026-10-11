@@ -6,6 +6,8 @@ A simple 2D polygon editor for creating geometry and generating vertices and ind
 
 ## Features
 - Create and edit 2D polygons (convex and concave, ear-clipping triangulation)
+- Close a polygon by clicking its first point; crossing edges are flagged red and rejected while drawing
+- Double-click an edge to insert a vertex, select a vertex and press Delete to remove it
 - Multi-selection (Shift+click, marquee, Ctrl+A), copy / cut / paste / duplicate
 - Move, nudge, rotate, resize, flip, align and distribute — every result is validated
 - Zoom (25%–800%, cursor-anchored) and pan, fit to view
@@ -13,6 +15,8 @@ A simple 2D polygon editor for creating geometry and generating vertices and ind
 - Colour palette with HEX input and recent colours
 - Undo / redo for every document change (80 steps)
 - Generate C++ vertices and indices, export a `.h` header
+- Optional OpenGL 3.3 setup snippet (VAO/VBO/EBO, attribute pointers, per-object `glDrawElements` ranges)
+- Autosave to local storage; the last document is restored on next launch
 - Export and import JSON projects, export PNG previews
 - Dark / light theme, collapsible panels, first-launch guide
 
@@ -27,8 +31,10 @@ A simple 2D polygon editor for creating geometry and generating vertices and ind
 | Shortcut | Action |
 |---|---|
 | `V` / `P` | Select tool / Polygon tool |
-| `Enter` / `Esc` | Finish polygon / cancel, deselect |
-| `Delete`, `Backspace` | Delete selection (removes last draft point while drawing) |
+| `Enter`, click first point / `Esc` | Finish polygon / cancel, deselect |
+| Double-click edge | Insert vertex |
+| `Delete`, `Backspace` | Delete selected vertex, else selection (removes last draft point while drawing) |
+| `Ctrl/⌘ S`, `Ctrl/⌘ O` | Save / open JSON project |
 | `Ctrl/⌘ C`, `X`, `V` | Copy, cut, paste objects |
 | `Ctrl/⌘ D` | Duplicate |
 | `Ctrl/⌘ A` | Select all (visible, unlocked) |

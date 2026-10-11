@@ -324,3 +324,37 @@ test("viewport-independent export: editor ops that are no-ops leave C++ identica
   ed.copy();
   assert.equal(exportOf(ed), before);
 });
+
+test("insert and delete vertices with validation and undo", () => {
+  const ed = setup();
+  ed.selectOnly(2);
+  const res = ed.insertVertex(2, 0, { x: 0, y: -0.1 }); // midpoint of bottom edge
+  assert.ok(res.ok, res.error);
+  assert.equal(ed.byId(2).points.length, 5);
+  assert.equal(ed.selectedVertex, 1);
+  assert.equal(G.checkPolygon(ed.byId(2).points), null);
+  assert.equal(G.buildMesh([ed.byId(2)]).indices.length, 3);
+  // Drag the new point outward → still a valid concave/convex shape.
+  assert.ok(ed.nudgeVertex(0, -0.1).ok);
+  assert.ok(ed.deleteVertex().ok);
+  assert.equal(ed.byId(2).points.length, 4);
+  assert.equal(ed.selectedVertex, null);
+  ed.undo();
+  ed.undo();
+  ed.undo();
+  assert.deepEqual(ed.byId(2).points, rect(-0.1, -0.1, 0.2, 0.2));
+  // Inserting a point that makes the polygon self-intersect is rejected.
+  const bad = ed.insertVertex(2, 0, { x: 0, y: 0.5 });
+  assert.equal(bad.ok, false);
+  assert.equal(ed.byId(2).points.length, 4);
+});
+
+test("cannot delete below 3 vertices", () => {
+  const ed = E.create();
+  ed.replaceAll([{ id: 1, name: "T", color: "#ffffff", points: [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 0, y: 0.5 }] }]);
+  ed.selectOnly(1);
+  ed.selectedVertex = 0;
+  const res = ed.deleteVertex();
+  assert.equal(res.ok, false);
+  assert.match(res.error, /minimal 3/);
+});

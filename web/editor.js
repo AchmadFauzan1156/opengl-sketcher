@@ -480,6 +480,40 @@ globalThis.MeshEditor = (() => {
       });
     };
 
+    // Inserts a point after vertex `after` (i.e. on edge after → after+1) and selects it.
+    ed.insertVertex = (id, after, point) => {
+      const s = ed.byId(id);
+      if (!s) return { ok: false, error: "Objek tidak ditemukan." };
+      if (s.locked) return { ok: false, error: "Objek terkunci." };
+      if (s.points.length >= G.MAX_POINTS)
+        return { ok: false, error: `Maksimal ${G.MAX_POINTS} titik per polygon.` };
+      const keep = ed.selection.has(id) ? [...ed.selection] : [id];
+      const res = ed.commit(
+        (draft) => {
+          draft.find((o) => o.id === id).points.splice(after + 1, 0, {
+            x: G.round(point.x),
+            y: G.round(point.y),
+          });
+        },
+        { selection: keep, primaryId: id },
+      );
+      if (res.ok) ed.selectedVertex = after + 1;
+      return res;
+    };
+    ed.deleteVertex = () => {
+      const s = ed.primary();
+      const i = ed.selectedVertex;
+      if (!s || !Number.isInteger(i)) return { ok: false, error: "Tidak ada titik terpilih." };
+      if (s.locked) return { ok: false, error: "Objek terkunci." };
+      if (s.points.length <= 3)
+        return { ok: false, error: "Polygon minimal 3 titik. Tekan Esc lalu Delete untuk menghapus objek." };
+      const res = ed.commit((draft) => {
+        draft.find((o) => o.id === s.id).points.splice(i, 1);
+      });
+      if (res.ok) ed.selectedVertex = null;
+      return res;
+    };
+
     // ---------- layers ----------
     // Moves every selected shape one step, preserving their relative order.
     ed.layerMove = (direction) => {

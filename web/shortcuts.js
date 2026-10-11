@@ -23,7 +23,7 @@ globalThis.MeshShortcuts = (() => {
   }
 
   /**
-   * ctx: { typing, textSelected, mode: "select"|"polygon", draftLength }
+   * ctx: { typing, textSelected, mode: "select"|"polygon", draftLength, vertexSelected }
    */
   function resolve(e, ctx) {
     if (ctx.typing || e.isComposing) return null;
@@ -57,6 +57,10 @@ globalThis.MeshShortcuts = (() => {
           return { action: "zoomOut" };
         case "0":
           return e.shiftKey ? null : { action: "zoomReset" };
+        case "s":
+          return e.shiftKey ? null : { action: "save" };
+        case "o":
+          return e.shiftKey ? null : { action: "open" };
       }
       if (e.code === "NumpadAdd") return { action: "zoomIn" };
       if (e.code === "NumpadSubtract") return { action: "zoomOut" };
@@ -69,6 +73,8 @@ globalThis.MeshShortcuts = (() => {
       // Context-aware: in polygon drawing mode, remove the last draft point first.
       if (ctx.mode === "polygon" && ctx.draftLength > 0)
         return { action: "removeDraftPoint" };
+      // With a vertex sub-selected, delete that vertex rather than the whole object.
+      if (ctx.vertexSelected) return { action: "deleteVertex" };
       return { action: "deleteSelection" };
     }
     if (key === "Escape") return { action: "escape" };
@@ -91,8 +97,11 @@ globalThis.MeshShortcuts = (() => {
   const LIST = [
     ["V", "Select tool"],
     ["P", "Polygon tool"],
-    ["Enter", "Selesaikan polygon"],
+    ["Enter · klik titik pertama", "Selesaikan polygon"],
     ["Esc", "Batal / hapus seleksi"],
+    ["Klik ganda di sisi", "Tambah titik pada polygon"],
+    ["Delete (titik terpilih)", "Hapus titik"],
+    ["Ctrl/⌘ S · O", "Simpan · Buka project JSON"],
     ["Ctrl/⌘ Z", "Undo"],
     ["Ctrl/⌘ Shift Z · Ctrl Y", "Redo"],
     ["Ctrl/⌘ C · X · V", "Copy · Cut · Paste"],

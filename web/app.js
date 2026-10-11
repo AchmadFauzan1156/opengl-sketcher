@@ -236,12 +236,18 @@ canvas.addEventListener("pointerdown", (event) => {
   if (event.button !== 0) return;
   mouseWorld = fromScreen(event);
   if (mode === "polygon") {
+    if (nearFirstDraftPoint(event)) return finishPolygon();
     if (draft.length >= MAX_POINTS) {
       setStatus("Jumlah titik maksimum tercapai.", "error");
       return;
     }
     if (draft.length && distance(draft[draft.length - 1], mouseWorld) < EPS) {
       setStatus("Titik tidak boleh sama dengan titik sebelumnya.", "error");
+      return;
+    }
+    const crossing = G.draftSegmentError(draft, mouseWorld);
+    if (crossing) {
+      setStatus(`Titik ditolak: ${crossing}`, "error");
       return;
     }
     draft.push(mouseWorld);
@@ -293,6 +299,44 @@ canvas.addEventListener("pointerdown", (event) => {
   }
   if (drag) canvas.setPointerCapture(event.pointerId);
   updateAll();
+});
+
+// Clicking (or snapping onto) the first draft point closes the polygon.
+function nearFirstDraftPoint(event) {
+  if (draft.length < 3) return false;
+  const first = draft[0];
+  return (
+    distance(canvasPoint(event), toScreen(first)) <= VERTEX_HIT ||
+    distance(fromScreen(event), first) < EPS
+  );
+}
+
+// Double-click on an edge inserts a vertex at the closest point of that edge.
+canvas.addEventListener("dblclick", (event) => {
+  if (mode !== "select" || drag) return;
+  const sp = canvasPoint(event);
+  if (findVertex(sp)) return;
+  let best = null;
+  for (let i = ed.shapes.length - 1; i >= 0 && !best; i--) {
+    const shape = ed.shapes[i];
+    if (!pickable(shape)) continue;
+    shape.points.forEach((p, j) => {
+      const q = shape.points[(j + 1) % shape.points.length];
+      const c = G.closestOnSegment(sp, toScreen(p), toScreen(q));
+      const d = distance(sp, c);
+      if (d <= HANDLE_HIT && (!best || d < best.d)) best = { id: shape.id, j, d, p, q, t: c.t };
+    });
+  }
+  if (!best) return;
+  const point = {
+    x: best.p.x + (best.q.x - best.p.x) * best.t,
+    y: best.p.y + (best.q.y - best.p.y) * best.t,
+  };
+  report(
+    ed.insertVertex(best.id, best.j, point),
+    "Titik ditambahkan. Tarik untuk mengubah bentuk, Delete untuk menghapus.",
+    { quiet: true },
+  );
 });
 
 function startTransformDrag(handle, event, sp) {
@@ -535,6 +579,7 @@ function themePalette() {
         label: "#fafafa",
         draft: "#e4e4e7",
         draftPoint: "#fafafa",
+        error: "#f87171",
       }
     : {
         background: "#ffffff",
@@ -551,6 +596,7 @@ function themePalette() {
         label: "#18181b",
         draft: "#18181b",
         draftPoint: "#18181b",
+        error: "#dc2626",
       };
 }
 function render() {
@@ -584,6 +630,8 @@ function render() {
   }
   const primary = ed.primary();
   if (primary && !primary.hidden) {
+    const pb = G.bounds(primary.points);
+    const centre = toScreen({ x: pb.cx, y: pb.cy });
     primary.points.forEach((p, index) => {
       const s = toScreen(p);
       const active = index === ed.selectedVertex;
@@ -597,36 +645,72 @@ function render() {
       if (single) {
         ctx.font = "11px ui-monospace, monospace";
         ctx.fillStyle = palette.label;
-        ctx.fillText(String(index), s.x + 9, s.y - 7);
+        const dx = s.x - centre.x,
+          dy = s.y - centre.y,
+          len = Math.hypot(dx, dy) || 1;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(String(index), s.x + (dx / len) * 15, s.y + (dy / len) * 15);
+        ctx.textAlign = "start";
+        ctx.textBaseline = "alphabetic";
       }
     });
   }
   drawSelectionBox(palette);
 
   if (draft.length) {
+    const closing =
+      mode === "polygon" &&
+      mouseScreen &&
+      draft.length >= 3 &&
+      distance(mouseScreen, toScreen(draft[0])) <= VERTEX_HIT;
     ctx.beginPath();
     drawPath(draft, false);
-    if (mouseWorld) {
-      const p = toScreen(mouseWorld);
-      ctx.lineTo(p.x, p.y);
-    }
     ctx.strokeStyle = palette.draft;
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 4]);
     ctx.stroke();
-    if (mouseWorld && draft.length >= 2) {
-      // closing edge preview
+    if (mouseWorld && !closing) {
+      // rubber band: red when the next edge would cross the path
+      const bad = G.draftSegmentError(draft, mouseWorld);
+      const a = toScreen(draft[draft.length - 1]),
+        p = toScreen(mouseWorld);
       ctx.beginPath();
-      const a = toScreen(mouseWorld),
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(p.x, p.y);
+      ctx.strokeStyle = bad ? palette.error : palette.draft;
+      ctx.stroke();
+      if (draft.length >= 2) {
+        // closing edge preview
+        const badClose = bad || G.draftClosingError([...draft, mouseWorld]);
+        const b = toScreen(draft[0]);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.globalAlpha = badClose ? 0.7 : 0.35;
+        ctx.strokeStyle = badClose ? palette.error : palette.draft;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    } else if (closing) {
+      const a = toScreen(draft[draft.length - 1]),
         b = toScreen(draft[0]);
+      ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
-      ctx.globalAlpha = 0.35;
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = G.draftClosingError(draft) ? palette.error : palette.selection;
       ctx.stroke();
-      ctx.globalAlpha = 1;
     }
     ctx.setLineDash([]);
+    if (closing) {
+      const f0 = toScreen(draft[0]);
+      ctx.beginPath();
+      ctx.arc(f0.x, f0.y, 9, 0, Math.PI * 2);
+      ctx.strokeStyle = palette.selection;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
     draft.forEach((p, i) => {
       const s = toScreen(p);
       ctx.beginPath();
@@ -837,7 +921,7 @@ function updateExport() {
   try {
     const mesh = G.buildMesh(ed.shapes);
     $("codeOutput").value = mesh.vertices.length
-      ? G.exportCpp(mesh)
+      ? G.exportCpp(mesh, { snippet: $("snippetToggle").checked })
       : "// Belum ada polygon. Pilih mode Polygon untuk mulai menggambar.";
     $("copyBtn").disabled = !mesh.vertices.length;
     $("cppDownloadBtn").disabled = !mesh.vertices.length;
@@ -862,7 +946,27 @@ function updateAll() {
   updateExport();
   updateZoomUI();
   render();
+  scheduleAutosave();
 }
+
+// Autosave: the document (not the view) is kept in localStorage, debounced.
+let autosaveTimer = 0;
+let lastAutosave = null;
+function writeAutosave() {
+  if (ed.gesture || colorPreview || drag) return scheduleAutosave();
+  const data = G.serializeProject(ed.shapes, dims);
+  if (data === lastAutosave) return;
+  store.set("autosave", data);
+  lastAutosave = data;
+}
+function scheduleAutosave() {
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(writeAutosave, 400);
+}
+window.addEventListener("pagehide", () => {
+  clearTimeout(autosaveTimer);
+  writeAutosave();
+});
 
 // ---------------------------------------------------------------- colour palette
 const PALETTE = [
@@ -967,6 +1071,9 @@ const actions = {
     report(ed.deleteSelection(), (r) => `${r.count} objek dihapus. Ctrl+Z untuk membatalkan.`);
   },
   removeDraftPoint,
+  deleteVertex: () => report(ed.deleteVertex(), "Titik dihapus.", { quiet: true }),
+  save: () => saveProject(),
+  open: () => $("jsonInput").click(),
   escape() {
     if (closeMenus()) return;
     if (tour.open) return tour.end();
@@ -1013,6 +1120,7 @@ document.addEventListener("keydown", (e) => {
     textSelected: textSelected(),
     mode,
     draftLength: draft.length,
+    vertexSelected: Number.isInteger(ed.selectedVertex) && ed.selection.size === 1,
   });
   if (!res) return;
   e.preventDefault();
@@ -1094,6 +1202,7 @@ function applyViewport(value) {
     `Preview memakai rasio ${w}:${h}. Gunakan rasio yang sama pada OpenGL.`,
   );
   requestAnimationFrame(resizeCanvas);
+  scheduleAutosave();
 }
 function gcd(a, b) {
   return b ? gcd(b, a % b) : a;
@@ -1317,9 +1426,17 @@ $("cppDownloadBtn").addEventListener("click", () => {
     setStatus(err.message, "error");
   }
 });
-$("jsonDownloadBtn").addEventListener("click", () =>
-  download("meshsketch.json", G.serializeProject(ed.shapes, dims), "application/json"),
-);
+function saveProject() {
+  download("meshsketch.json", G.serializeProject(ed.shapes, dims), "application/json");
+  setStatus("Project disimpan sebagai meshsketch.json.");
+}
+$("jsonDownloadBtn").addEventListener("click", saveProject);
+$("deleteVertexBtn").addEventListener("click", actions.deleteVertex);
+$("snippetToggle").addEventListener("change", (e) => {
+  store.set("snippet", e.target.checked);
+  updateExport();
+});
+$("transformDetails").addEventListener("toggle", (e) => store.set("transformOpen", e.target.open));
 $("jsonImportBtn").addEventListener("click", () => $("jsonInput").click());
 $("jsonInput").addEventListener("change", async (e) => {
   const file = e.target.files[0];
@@ -1413,12 +1530,12 @@ const tour = (() => {
     {
       title: "Buat polygon",
       target: "polygonModeBtn",
-      body: "<ul><li>Pilih <b>Polygon</b> atau tekan <kbd>P</kbd>.</li><li>Klik canvas untuk menambah titik.</li><li><kbd>Enter</kbd> selesai, <kbd>Backspace</kbd> hapus titik terakhir, <kbd>Esc</kbd> batal.</li></ul>",
+      body: "<ul><li>Pilih <b>Polygon</b> atau tekan <kbd>P</kbd>.</li><li>Klik canvas untuk menambah titik.</li><li><kbd>Enter</kbd> atau klik titik pertama untuk selesai, <kbd>Backspace</kbd> hapus titik terakhir, <kbd>Esc</kbd> batal.</li></ul>",
     },
     {
       title: "Edit geometri",
       target: "canvasFrame",
-      body: "<ul><li>Klik polygon untuk memilih (<kbd>V</kbd> = Select).</li><li>Tarik titik (vertex) untuk mengubah bentuk.</li><li>Koordinat tepat bisa diketik di panel Properties.</li></ul>",
+      body: "<ul><li>Klik polygon untuk memilih (<kbd>V</kbd> = Select).</li><li>Tarik titik (vertex) untuk mengubah bentuk.</li><li>Klik ganda di sisi untuk menambah titik; pilih titik lalu <kbd>Delete</kbd> untuk menghapusnya.</li><li>Koordinat tepat bisa diketik di panel Properties.</li></ul>",
     },
     {
       title: "Pilih & transformasi",
@@ -1437,7 +1554,7 @@ const tour = (() => {
     {
       title: "Ekspor data OpenGL",
       target: "exportPanel",
-      body: "<p>Panel Output berisi array <code>vertices</code> (8 float: XYZ + RGB + UV) dan <code>indices</code> (segitiga CCW).</p><p>Salin kode C++, unduh header <code>.h</code>, simpan/buka project JSON, atau unduh PNG.</p>",
+      body: "<p>Panel Output berisi array <code>vertices</code> (8 float: XYZ + RGB + UV) dan <code>indices</code> (segitiga CCW).</p><p>Aktifkan <b>kode setup OpenGL</b> untuk contoh VAO/VBO/EBO dan rentang draw per objek. Project tersimpan otomatis; <kbd>Ctrl S</kbd> menyimpan file JSON.</p>",
     },
   ];
   let index = 0;
@@ -1534,10 +1651,32 @@ if (typeof savedColor === "string" && normalizeHex(savedColor)) currentColor = n
 buildPalette();
 renderRecent();
 setPanel("left", store.get("panel.left", true), false);
-setPanel("right", store.get("panel.right", window.innerWidth > 960), false);
-ed.replaceAll(loadExample());
+setPanel("right", store.get("panel.right", window.innerWidth > 1100), false);
+// Shrinking below 1100px collapses the output panel to keep the canvas usable.
+window.matchMedia("(max-width: 1100px)").addEventListener("change", (e) => {
+  if (e.matches) setPanel("right", false, false);
+});
+$("snippetToggle").checked = store.get("snippet", false) === true;
+$("transformDetails").open = store.get("transformOpen", true) !== false;
+let restored = false;
+try {
+  const saved = store.get("autosave", null);
+  if (typeof saved === "string") {
+    const data = JSON.parse(saved);
+    ed.replaceAll(G.validateImport(data));
+    const option = data.viewport ? `${data.viewport.w}x${data.viewport.h}` : "";
+    if ([...$("viewportSelect").options].some((o) => o.value === option))
+      $("viewportSelect").value = option;
+    lastAutosave = saved;
+    restored = true;
+  }
+} catch {
+  /* corrupt or outdated autosave — fall back to the example */
+}
+if (!restored) ed.replaceAll(loadExample());
 ed.history = [];
-applyViewport("800x600");
+applyViewport($("viewportSelect").value);
 setMode("select");
+if (restored) setStatus("Pekerjaan terakhir dipulihkan otomatis.");
 new ResizeObserver(resizeCanvas).observe(frame);
 if (!store.get("tourDone", false)) requestAnimationFrame(() => tour.start());

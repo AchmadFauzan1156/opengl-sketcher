@@ -226,6 +226,42 @@ globalThis.MeshGeometry = (() => {
     };
   }
 
+  // Closest point on segment ab to p (works in any 2D space, e.g. screen px).
+  function closestOnSegment(p, a, b) {
+    const dx = b.x - a.x,
+      dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 ? clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / len2, 0, 1) : 0;
+    return { x: a.x + t * dx, y: a.y + t * dy, t };
+  }
+
+  // Live check while drawing: would the next edge (last draft point → candidate)
+  // cross or fold back over the existing open path?
+  function draftSegmentError(draft, candidate) {
+    const n = draft.length;
+    if (n < 2) return null;
+    const last = draft[n - 1];
+    for (let i = 0; i + 1 < n - 1; i++)
+      if (intersect(draft[i], draft[i + 1], last, candidate))
+        return "Garis berpotongan dengan sisi lain.";
+    const prev = draft[n - 2];
+    const back =
+      (prev.x - last.x) * (candidate.x - last.x) +
+      (prev.y - last.y) * (candidate.y - last.y);
+    if (Math.abs(cross(prev, last, candidate)) <= EPS && back > 0)
+      return "Garis menumpuk sisi sebelumnya.";
+    return null;
+  }
+  // Would closing the draft (last → first) cross an existing edge?
+  function draftClosingError(draft) {
+    const n = draft.length;
+    if (n < 3) return null;
+    for (let i = 1; i + 1 < n - 1; i++)
+      if (intersect(draft[i], draft[i + 1], draft[n - 1], draft[0]))
+        return "Sisi penutup berpotongan dengan sisi lain.";
+    return null;
+  }
+
   function rectContainsPoints(rect, points) {
     const minX = Math.min(rect.x1, rect.x2),
       maxX = Math.max(rect.x1, rect.x2),
@@ -246,10 +282,12 @@ globalThis.MeshGeometry = (() => {
   // current positions, so rotate/scale/flip can never leave stale texture coordinates.
   function buildMesh(shapes) {
     const vertices = [],
-      indices = [];
+      indices = [],
+      ranges = []; // per object: first index offset + count, for glDrawElements
     for (const shape of shapes) {
       if (shape.hidden) continue;
       const triangles = triangulate(shape.points);
+      ranges.push({ name: shape.name, first: indices.length * 3, count: triangles.length * 3 });
       const rgb = [1, 3, 5].map(
         (i) => parseInt(shape.color.slice(i, i + 2), 16) / 255,
       );
@@ -263,9 +301,43 @@ globalThis.MeshGeometry = (() => {
       for (const tri of triangles)
         indices.push({ i: tri.map((x) => x + start), name: shape.name });
     }
-    return { vertices, indices };
+    return { vertices, indices, ranges };
   }
-  function exportCpp(mesh) {
+  // Optional OpenGL 3.3 core setup + draw snippet matching the 8-float layout.
+  function setupSnippet(mesh) {
+    const lines = [
+      "",
+      "// Drawing (after VAO/EBO setup):",
+      "// layout(location = 0) vec3 aPos; 1 = vec3 aColor; 2 = vec2 aTexCoord",
+      "unsigned int VAO, VBO, EBO;",
+      "glGenVertexArrays(1, &VAO);",
+      "glGenBuffers(1, &VBO);",
+      "glGenBuffers(1, &EBO);",
+      "glBindVertexArray(VAO);",
+      "glBindBuffer(GL_ARRAY_BUFFER, VBO);",
+      "glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);",
+      "glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);",
+      "glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);",
+      "glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);",
+      "glEnableVertexAttribArray(0);",
+      "glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));",
+      "glEnableVertexAttribArray(1);",
+      "glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));",
+      "glEnableVertexAttribArray(2);",
+      "",
+      "// Render loop — semua objek sekaligus:",
+      "glBindVertexArray(VAO);",
+      `glDrawElements(GL_TRIANGLES, ${mesh.indices.length * 3}, GL_UNSIGNED_INT, 0);`,
+      "",
+      "// Atau per objek:",
+    ];
+    for (const r of mesh.ranges)
+      lines.push(
+        `// glDrawElements(GL_TRIANGLES, ${r.count}, GL_UNSIGNED_INT, (void*)(${r.first} * sizeof(unsigned int))); // ${r.name}`,
+      );
+    return lines.join("\n");
+  }
+  function exportCpp(mesh, { snippet = false } = {}) {
     const lines = ["float vertices[] = {"];
     mesh.vertices.forEach((v, i) => {
       const fields = [v.x, v.y, v.z, ...v.rgb, v.u, v.v].map(toFloat);
@@ -278,7 +350,7 @@ globalThis.MeshGeometry = (() => {
       lines.push(`    ${tri.i.join(", ")}, // ${tri.name}`),
     );
     lines.push("};");
-    return lines.join("\n");
+    return lines.join("\n") + (snippet && mesh.vertices.length ? `\n${setupSnippet(mesh)}` : "");
   }
   function exportHeader(mesh) {
     if (!mesh.vertices.length) return "#pragma once\n// Tidak ada polygon.\n";
@@ -367,6 +439,9 @@ globalThis.MeshGeometry = (() => {
     rotatePoints,
     scalePoints,
     clampDelta,
+    closestOnSegment,
+    draftSegmentError,
+    draftClosingError,
     rectContainsPoints,
     toFloat,
     buildMesh,

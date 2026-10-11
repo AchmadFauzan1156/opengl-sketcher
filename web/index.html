@@ -83,6 +83,14 @@
             </div>
           </section>
 
+          <section class="sidebar-section objects-section">
+            <div class="row-between">
+              <h2>Layers</h2>
+              <span class="counter" id="shapeCount">0</span>
+            </div>
+            <div class="shape-list" id="shapeList" aria-label="Daftar polygon"></div>
+          </section>
+
           <!-- Contextual properties: only shown with a selection -->
           <section class="sidebar-section hidden" id="propertiesSection" aria-label="Properti objek">
             <div class="row-between">
@@ -102,26 +110,26 @@
             </div>
             <label class="inline-check"><input type="checkbox" id="aspectLock" /> Kunci rasio W:H</label>
 
-            <div class="field-label" id="transformTools">Rotasi &amp; skala</div>
-            <div class="transform-row">
-              <label class="input-suffix" title="Sudut rotasi (derajat)"><input id="rotateInput" class="input" type="number" step="1" value="15" aria-label="Sudut rotasi" /><span>°</span></label>
-              <button class="button button-outline icon-button" id="rotateCcwBtn" type="button" title="Putar berlawanan jarum jam" aria-label="Putar berlawanan jarum jam"><svg><use href="#i-rot-ccw" /></svg></button>
-              <button class="button button-outline icon-button" id="rotateCwBtn" type="button" title="Putar searah jarum jam" aria-label="Putar searah jarum jam"><svg><use href="#i-rot-cw" /></svg></button>
-            </div>
-            <div class="chip-row" role="group" aria-label="Preset rotasi">
-              <button class="chip" type="button" data-rotate="45">45°</button>
-              <button class="chip" type="button" data-rotate="90">90°</button>
-              <button class="chip" type="button" data-rotate="180">180°</button>
-              <button class="chip" type="button" data-rotate="-90">−90°</button>
-            </div>
-            <div class="transform-row">
-              <label class="input-suffix" title="Skala relatif (%)"><input id="scaleInput" class="input" type="number" step="5" min="1" value="110" aria-label="Skala persen" /><span>%</span></label>
-              <button class="button button-outline" id="scaleApplyBtn" type="button" title="Skala seragam dari pusat seleksi">Skala</button>
-            </div>
-            <div class="chip-row">
-              <button class="chip" type="button" id="flipHBtn" title="Flip horizontal"><svg><use href="#i-flip-h" /></svg>Flip H</button>
-              <button class="chip" type="button" id="flipVBtn" title="Flip vertikal"><svg><use href="#i-flip-v" /></svg>Flip V</button>
-            </div>
+            <details class="sub-details" id="transformDetails" open>
+              <summary id="transformTools">Rotasi, skala &amp; flip<svg class="chev"><use href="#i-chevron" /></svg></summary>
+              <div class="transform-row">
+                <label class="input-suffix" title="Sudut rotasi (derajat, positif = berlawanan jarum jam)"><input id="rotateInput" class="input" type="number" step="1" value="15" aria-label="Sudut rotasi" /><span>°</span></label>
+                <button class="button button-outline icon-button" id="rotateCcwBtn" type="button" title="Putar berlawanan jarum jam" aria-label="Putar berlawanan jarum jam"><svg><use href="#i-rot-ccw" /></svg></button>
+                <button class="button button-outline icon-button" id="rotateCwBtn" type="button" title="Putar searah jarum jam" aria-label="Putar searah jarum jam"><svg><use href="#i-rot-cw" /></svg></button>
+              </div>
+              <div class="chip-row" role="group" aria-label="Preset rotasi">
+                <button class="chip" type="button" data-rotate="45">45°</button>
+                <button class="chip" type="button" data-rotate="90">90°</button>
+                <button class="chip" type="button" data-rotate="180">180°</button>
+                <button class="chip" type="button" data-rotate="-90">−90°</button>
+              </div>
+              <div class="transform-row">
+                <label class="input-suffix" title="Skala relatif (%)"><input id="scaleInput" class="input" type="number" step="5" min="1" value="110" aria-label="Skala persen" /><span>%</span></label>
+                <button class="button button-outline" id="scaleApplyBtn" type="button" title="Skala seragam dari pusat seleksi">Skala</button>
+                <button class="button button-outline icon-button" type="button" id="flipHBtn" title="Flip horizontal" aria-label="Flip horizontal"><svg><use href="#i-flip-h" /></svg></button>
+                <button class="button button-outline icon-button" type="button" id="flipVBtn" title="Flip vertikal" aria-label="Flip vertikal"><svg><use href="#i-flip-v" /></svg></button>
+              </div>
+            </details>
 
             <div id="alignSection" class="hidden">
               <div class="field-label">Align &amp; distribute</div>
@@ -138,7 +146,7 @@
             </div>
 
             <div class="selected-vertex hidden" id="selectedVertexEditor">
-              <div class="field-label">Vertex terpilih <span id="selectedVertexIndex"></span></div>
+              <div class="field-label row-between"><span>Vertex terpilih <span id="selectedVertexIndex"></span></span><button type="button" class="chip" id="deleteVertexBtn" title="Hapus titik (Delete)">Hapus titik</button></div>
               <div class="num-grid two">
                 <label>X<input type="number" step="0.05" min="-1" max="1" id="vertexX" class="input" /></label>
                 <label>Y<input type="number" step="0.05" min="-1" max="1" id="vertexY" class="input" /></label>
@@ -157,6 +165,7 @@
               <button class="button button-outline" type="button" id="duplicateBtn" title="Duplikat (Ctrl+D)">Duplikat</button>
               <button class="button button-danger" type="button" id="deleteBtn" title="Hapus (Delete)">Hapus</button>
             </div>
+            <p class="subtext">Klik ganda di sisi polygon untuk menambah titik.</p>
           </section>
 
           <details class="sidebar-section collapsible" id="colorSection" open>
@@ -184,13 +193,6 @@
             <label class="toggle-row" for="gridToggle"><span>Show grid</span><input type="checkbox" id="gridToggle" checked /><span class="switch-track" aria-hidden="true"></span></label>
           </details>
 
-          <section class="sidebar-section objects-section">
-            <div class="row-between">
-              <h2>Layers</h2>
-              <span class="counter" id="shapeCount">0</span>
-            </div>
-            <div class="shape-list" id="shapeList" aria-label="Daftar polygon"></div>
-          </section>
         </aside>
 
         <!-- ============ CENTER: toolbar + canvas ============ -->
@@ -262,6 +264,7 @@
             <h2>Output</h2>
             <span class="subtext" id="hiddenNote"></span>
           </div>
+          <label class="toggle-row compact-toggle" for="snippetToggle"><span>Sertakan kode setup OpenGL (VAO/VBO/EBO)</span><input type="checkbox" id="snippetToggle" /><span class="switch-track" aria-hidden="true"></span></label>
           <label class="field-label" for="codeOutput">Vertices &amp; indices</label>
           <div class="code-frame">
             <div class="code-header"><span class="code-dot"></span> mesh.cpp <span class="code-lang">C++</span></div>
@@ -270,13 +273,14 @@
           <button id="copyBtn" class="button button-primary full" type="button"><svg><use href="#i-copy" /></svg>Salin kode C++</button>
           <div class="export-buttons">
             <button id="cppDownloadBtn" class="button button-outline" type="button">Download .h</button>
-            <button id="jsonDownloadBtn" class="button button-outline" type="button">Simpan JSON</button>
+            <button id="jsonDownloadBtn" class="button button-outline" type="button" title="Simpan project (Ctrl+S)">Simpan JSON</button>
           </div>
           <div class="extra-actions">
-            <button id="jsonImportBtn" class="button button-outline full" type="button">Buka project JSON</button>
+            <button id="jsonImportBtn" class="button button-outline full" type="button" title="Buka project (Ctrl+O)">Buka project JSON</button>
             <input id="jsonInput" type="file" accept=".json,application/json" hidden />
             <button id="pngDownloadBtn" class="button button-outline full" type="button">Download preview PNG</button>
           </div>
+          <p class="subtext" id="autosaveNote">Perubahan disimpan otomatis di perangkat ini.</p>
           <div class="bottom-actions">
             <button class="button button-outline" id="resetBtn" type="button" title="Ganti canvas dengan contoh rumah (bisa di-undo)"><svg><use href="#i-rot-ccw" /></svg><span>Reset contoh</span></button>
           </div>

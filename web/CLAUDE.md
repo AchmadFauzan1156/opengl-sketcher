@@ -30,6 +30,10 @@ Invariants
   Flips keep vertex order. Hidden shapes are skipped by buildMesh.
 - Shortcuts return null when focus is in a text field or page text is selected — don't preventDefault then.
 - UI strings are Indonesian; keep new strings consistent.
+- Autosave stores only the document (serializeProject) under localStorage "meshsketch.autosave"; it is skipped
+  while a gesture/colour preview is active. Other prefs use the same "meshsketch.*" prefix via `store`.
+- exportCpp(mesh, { snippet }) appends the optional GL setup after "// Drawing (after VAO/EBO setup):";
+  exportHeader never includes it.
 
 Testing
 

@@ -80,6 +80,8 @@ test("context-aware Backspace/Delete", () => {
   assert.equal(action(key("Backspace"), drawing), "removeDraftPoint");
   assert.equal(action(key("Delete"), drawing), "removeDraftPoint");
   assert.equal(action(key("Backspace"), ctx({ mode: "polygon" })), "deleteSelection");
+  assert.equal(action(key("Delete"), ctx({ vertexSelected: true })), "deleteVertex");
+  assert.equal(action(key("Backspace"), ctx({ vertexSelected: true, mode: "polygon", draftLength: 2 })), "removeDraftPoint");
 });
 
 test("tools, escape, enter, nudge, fit", () => {
@@ -96,7 +98,6 @@ test("tools, escape, enter, nudge, fit", () => {
 
 test("unrelated system/browser shortcuts are not hijacked", () => {
   for (const e of [
-    key("s", { ctrl: true }),
     key("r", { ctrl: true }),
     key("t", { ctrl: true }),
     key("w", { meta: true }),
@@ -107,4 +108,10 @@ test("unrelated system/browser shortcuts are not hijacked", () => {
     key("F5"),
   ])
     assert.equal(action(e), null);
+});
+
+test("save/open project shortcuts", () => {
+  assert.equal(action(key("s", { ctrl: true })), "save");
+  assert.equal(action(key("o", { meta: true })), "open");
+  assert.equal(action(key("s", { ctrl: true }), ctx({ typing: true })), null);
 });

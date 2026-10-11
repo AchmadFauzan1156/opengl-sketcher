@@ -176,3 +176,47 @@ test("JSON roundtrip, including legacy files without new fields", () => {
     G.validateImport({ shapes: [{ name: "x", color: "red", points: square }] }),
   );
 });
+
+test("live draft checks catch crossing and folding edges", () => {
+  const d = [
+    { x: -0.5, y: -0.5 },
+    { x: 0.5, y: -0.5 },
+    { x: 0.5, y: 0.5 },
+  ];
+  assert.equal(G.draftSegmentError(d, { x: -0.5, y: 0.5 }), null);
+  assert.match(G.draftSegmentError(d, { x: 0, y: -0.8 }), /berpotongan/);
+  assert.match(G.draftSegmentError(d, { x: 0.5, y: 0 }), /menumpuk/);
+  assert.equal(G.draftSegmentError(d.slice(0, 1), { x: 1, y: 1 }), null);
+  const zig = [
+    { x: 0, y: 0 },
+    { x: 0.5, y: -0.5 },
+    { x: 0.5, y: 0.5 },
+    { x: 0.8, y: 0 },
+  ];
+  assert.equal(G.draftSegmentError(zig.slice(0, 3), zig[3]), null);
+  assert.match(G.draftClosingError(zig), /penutup/);
+  assert.equal(G.draftClosingError(square), null);
+});
+
+test("closestOnSegment projects and clamps", () => {
+  const p = G.closestOnSegment({ x: 0.3, y: 1 }, { x: 0, y: 0 }, { x: 1, y: 0 });
+  assert.deepEqual([p.x, p.y, p.t], [0.3, 0, 0.3]);
+  assert.equal(G.closestOnSegment({ x: -5, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }).t, 0);
+});
+
+test("draw ranges and optional OpenGL setup snippet", () => {
+  const shapes = [
+    { id: 1, name: "A", color: "#ff0000", points: square },
+    { id: 2, name: "B", color: "#00ff00", points: ell },
+  ];
+  const mesh = G.buildMesh(shapes);
+  assert.deepEqual(mesh.ranges.map((r) => [r.first, r.count]), [[0, 6], [6, 12]]);
+  const plain = G.exportCpp(mesh);
+  assert.doesNotMatch(plain, /glDrawElements/);
+  const full = G.exportCpp(mesh, { snippet: true });
+  assert.ok(full.startsWith(plain));
+  assert.ok(full.includes("glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_INT, 0);"));
+  assert.ok(full.includes("glDrawElements(GL_TRIANGLES, 12, GL_UNSIGNED_INT, (void*)(6 * sizeof(unsigned int))); // B"));
+  assert.ok(full.includes("8 * sizeof(float), (void*)(6 * sizeof(float))"));
+  assert.doesNotMatch(G.exportHeader(mesh), /glGen/);
+});
