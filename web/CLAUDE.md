@@ -4,105 +4,41 @@ Overview
 
 MeshSketch is a web-based OpenGL mesh editor that allows users to draw polygons in 2D space and export them as C++
 OpenGL code. The application uses OpenGL's Normalized Device Coordinates (NDC) where x and y range from -1 to +1.
+It runs from `file://` in a browser and inside Tauri 2 (`frontendDist: ../web`). No build step, no dependencies.
 
-High-Level Architecture
+Architecture (classic `<script defer>` files, loaded in this order; each attaches one global)
 
-Three-File Web Application:
+1. geometry.js → `MeshGeometry` — pure: validPolygon, triangulate (ear clipping), checkPolygon,
+   bounds/translate/rotate/scale helpers, buildMesh / exportCpp / exportHeader, JSON serialize/validateImport.
+2. viewport.js → `MeshViewport` — pure view transform `{ scale, offsetX, offsetY }`:
+   screen = base(ndc) * scale + offset, where base() is the original 100% mapping. zoomAt (cursor-anchored),
+   stepScale, fit, resize. Display only — never touches the model.
+3. editor.js → `MeshEditor.create()` — document model: shapes, selection (Set of ids + primaryId + selectedVertex),
+   history/future snapshots (80 max, include selection), clipboard, and every mutation.
+4. shortcuts.js → `MeshShortcuts` — pure `resolve(event, ctx)` → `{ action, args }` | null, plus the shortcut list.
+5. app.js — DOM only: renderer, pointer controller (select/vertex/move/resize/rotate/marquee/pan), keyboard
+   dispatch (`actions` map), panels, colour palette, onboarding tour, export buttons.
 
-1. index.html - Complete user interface containing:
-   - Main canvas area with OpenGL NDC coordinate system
-   - Right sidebar for tools and object management
-   - Export panel for C++ code generation
-   - Viewport controls, theme switching
-   - Real-time statistics display
-2. app.js - Core JavaScript application logic including:
-   - Polygon editing with Select and Polygon modes
-   - Ear-clipping triangulation algorithm
-   - Polygon validation (boundary, collinearity, self-intersection)
-   - Complete history/undo/redo system
-   - C++ code generation (8-float vertex layout: xyz + RGB + UV)
-   - File download/export functionality
-   - Complex UI event handling and state management
-3. styles.css - Complete UI styling with:
-   - Light/dark theme support
-   - Modern component design inspired by shadcn/ui
-   - Responsive layout for desktop and mobile
-   - Grid and snapping visual feedback
+Invariants
 
-Key Technical Implementation
+- All geometry mutations go through `ed.commit()` (transactional: clones, mutates, re-validates every changed
+  polygon with checkPolygon, then applies atomically with one history entry; no-ops create no entry).
+- Pointer drags use `ed.beginGesture()` → `previewSelection()/previewVertex()` → `endGesture()`
+  (one history entry per drag, full rollback if invalid) or `cancelGesture()` (Esc).
+- Never store zoom/pan in history or exports. PNG export uses the fixed NDC → framebuffer mapping.
+- Exported vertex layout is 8 floats: xyz + rgb + uv. Triangles are always CCW (triangulate reverses CW input).
+  Flips keep vertex order. Hidden shapes are skipped by buildMesh.
+- Shortcuts return null when focus is in a text field or page text is selected — don't preventDefault then.
+- UI strings are Indonesian; keep new strings consistent.
+- Autosave stores only the document (serializeProject) under localStorage "meshsketch.autosave"; it is skipped
+  while a gesture/colour preview is active. Other prefs use the same "meshsketch.*" prefix via `store`.
+- exportCpp(mesh, { snippet }) appends the optional GL setup after "// Drawing (after VAO/EBO setup):";
+  exportHeader never includes it.
 
-OpenGL Integration:
+Testing
 
-- Uses Canvas 2D API for rendering but generates C++ OpenGL code
-- 8-float vertex layout: position (xyz) + color (RGB) + texture coordinates (UV)
-- Export includes both vertices array and indices array
-- NDC coordinate system consistent with OpenGL specifications
-
-Advanced Polygon Operations:
-
-- Triangulation: Ear-clipping algorithm for both convex and concave polygons
-- Validation: Automatic checks for collinearity, self-intersection, boundary limits
-- Vertex Editing: Real-time coordinate modification with validation
-- Layer Management: Bring-forward/bring-backward operations
-
-User Experience Features:
-
-- Canvas-relative coordinate conversion
-- Viewport resizing with aspect ratio preservation
-- Multiple export formats (C++, JSON, PNG artwork)
-- Keyboard shortcuts for power users
-- History system with 80-state stack
-
-Development Workflow
-
-Quick Commands:
-
-- Run the application: Open index.html in a modern web browser
-- Inspect and debug: Use browser developer tools (F12)
-- Code editing: All modifications can be made directly to the three files
-
-Code Structure Notes:
-
-- All state management is in app.js
-- UI events are mapped directly to application functions
-- No external dependencies - pure JavaScript, HTML, and CSS
-- Project can run entirely locally in the browser
-
-Notable Implementation Patterns:
-
-- Uses $() helper function for DOM element access
-- Immutable-style operations with history snapshots
-- Grid snapping at 0.05 increments
-- Comprehensive error handling for user feedback
-
-Common Tasks
-
-For Future Development:
-
-1. Adding Export Formats:
-   - Understand existing export patterns in app.js
-   - Follow same download, blob, and URL creation pattern
-   - Match the existing UI button structure
-2. Improving Polygon Operations:
-   - Study the triangulation algorithm in triangulate() function
-   - Understand the validation system in validPolygon()
-   - Note the coordinate rounding system for precision control
-3. Enhancing UI:
-   - Examine the component patterns in styles.css
-   - Understand the theme switching mechanism
-   - Note the responsive breakpoint strategy
-4. Debugging Issues:
-   - The application has extensive error handling
-   - User feedback is displayed via setStatus() system
-   - Console debugging of the shapes array provides visibility into state
-
-Important Considerations:
-
-- The application uses client-side only storage and computation
-- All polygon data remains in memory during the session
-- No backend server is required
-- Exported C++ code requires separate OpenGL setup
-- The application maintains a consistent 60fps rendering for smooth interaction
-
-This project demonstrates a complete, self-contained web application that combines sophisticated geometry algorithms
-with an intuitive user interface, providing a unique tool for creating OpenGL meshes through direct manipulation.
+- `npm test` runs `node --test` on tests/*.test.js; tests/load.js evaluates the web scripts into Node globals.
+  Covered: geometry/triangulation/transforms, viewport math, shortcut resolution, editor selection, clipboard,
+  history, transactions, gestures, layers, groups, colour.
+- `npm run check` syntax-checks all web scripts.
+- UI behaviour (pointer, zoom, panels) is verified manually or with a headless browser against web/index.html.

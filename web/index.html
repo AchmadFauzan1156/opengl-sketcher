@@ -10,125 +10,77 @@
     />
     <title>MeshSketch</title>
     <link rel="stylesheet" href="styles.css" />
-    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <script src="geometry.js" defer></script>
+    <script src="viewport.js" defer></script>
+    <script src="editor.js" defer></script>
+    <script src="shortcuts.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
-    <div class="app-shell">
+    <!-- Shared icon sprites -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-select" viewBox="0 0 24 24"><path d="M5 3l14 9-7.2 1.7L8.9 21 5 3Z" /></symbol>
+        <symbol id="i-polygon" viewBox="0 0 24 24"><path d="m4 17 6-12 10 5-4 10-12-3Z" /><circle cx="4" cy="17" r="1.4" fill="currentColor" /><circle cx="10" cy="5" r="1.4" fill="currentColor" /><circle cx="20" cy="10" r="1.4" fill="currentColor" /></symbol>
+        <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-2" /></symbol>
+        <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5" /><path d="M20 9H10a6 6 0 0 0 0 12h2" /></symbol>
+        <symbol id="i-rot-ccw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8" /><path d="M3 3v5h5" /></symbol>
+        <symbol id="i-rot-cw" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8" /><path d="M21 3v5h-5" /></symbol>
+        <symbol id="i-flip-h" viewBox="0 0 24 24"><path d="M12 3v18" stroke-dasharray="2 2" /><path d="M9 7 4 17h5V7Z" /><path d="m15 7 5 10h-5V7Z" /></symbol>
+        <symbol id="i-flip-v" viewBox="0 0 24 24"><path d="M3 12h18" stroke-dasharray="2 2" /><path d="M7 9 17 4v5H7Z" /><path d="m7 15 10 5v-5H7Z" /></symbol>
+        <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16" /><path d="M10 11v6m4-6v6" /><path d="M6 7l1 13h10l1-13" /><path d="M9 7V4h6v3" /></symbol>
+        <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></symbol>
+        <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18" /><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.3 4.2M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.6 9.6 0 0 0 5.4-1.6" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></symbol>
+        <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 7.7-1.5" /></symbol>
+        <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 14 6-6 6 6" /></symbol>
+        <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 10 6 6 6-6" /></symbol>
+        <symbol id="i-panel-left" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" /></symbol>
+        <symbol id="i-panel-right" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></symbol>
+        <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.2-2.5 3.9" /><circle cx="12" cy="17" r=".6" fill="currentColor" /></symbol>
+        <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.9 13.2A9 9 0 0 1 10.8 3.1 9 9 0 1 0 20.9 13.2Z" /></symbol>
+        <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41" /></symbol>
+        <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" /></symbol>
+        <symbol id="i-al-left" viewBox="0 0 24 24"><path d="M4 3v18" /><rect x="7" y="6" width="10" height="4" rx="1" /><rect x="7" y="14" width="6" height="4" rx="1" /></symbol>
+        <symbol id="i-al-hcenter" viewBox="0 0 24 24"><path d="M12 3v18" /><rect x="6" y="6" width="12" height="4" rx="1" /><rect x="8" y="14" width="8" height="4" rx="1" /></symbol>
+        <symbol id="i-al-right" viewBox="0 0 24 24"><path d="M20 3v18" /><rect x="7" y="6" width="10" height="4" rx="1" /><rect x="11" y="14" width="6" height="4" rx="1" /></symbol>
+        <symbol id="i-al-top" viewBox="0 0 24 24"><path d="M3 4h18" /><rect x="6" y="7" width="4" height="10" rx="1" /><rect x="14" y="7" width="4" height="6" rx="1" /></symbol>
+        <symbol id="i-al-vcenter" viewBox="0 0 24 24"><path d="M3 12h18" /><rect x="6" y="6" width="4" height="12" rx="1" /><rect x="14" y="8" width="4" height="8" rx="1" /></symbol>
+        <symbol id="i-al-bottom" viewBox="0 0 24 24"><path d="M3 20h18" /><rect x="6" y="7" width="4" height="10" rx="1" /><rect x="14" y="11" width="4" height="6" rx="1" /></symbol>
+        <symbol id="i-dist-h" viewBox="0 0 24 24"><path d="M3 4v16M21 4v16" /><rect x="9" y="7" width="6" height="10" rx="1" /></symbol>
+        <symbol id="i-dist-v" viewBox="0 0 24 24"><path d="M4 3h16M4 21h16" /><rect x="7" y="9" width="10" height="6" rx="1" /></symbol>
+        <symbol id="i-group" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 2" /><rect x="7" y="7" width="5" height="5" rx="1" /><rect x="12" y="12" width="5" height="5" rx="1" /></symbol>
+        <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></symbol>
+      </defs>
+    </svg>
+
+    <div class="app-shell" id="appShell">
       <main class="workspace">
-        <aside class="panel tools-panel" aria-label="Alat dan objek">
+        <!-- ============ LEFT: tools, properties, colour, canvas, layers ============ -->
+        <aside class="panel tools-panel" id="toolsPanel" aria-label="Alat dan objek">
           <section class="sidebar-section">
             <div class="section-heading">
-              <div>
-                <div class="eyebrow">EDITOR</div>
-                <h2>Tools</h2>
-              </div>
+              <h2>Tools</h2>
             </div>
             <div class="mode-buttons" role="group" aria-label="Mode editor">
-              <button
-                id="selectModeBtn"
-                class="button mode active"
-                aria-pressed="true"
-                type="button"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linejoin="round"
-                >
-                  <path d="M5 3l14 9-7.2 1.7L8.9 21 5 3Z" />
-                </svg>
-                <span>Select</span>
+              <button id="selectModeBtn" class="button mode active" aria-pressed="true" type="button" title="Select (V)">
+                <svg><use href="#i-select" /></svg><span>Select</span><kbd>V</kbd>
               </button>
-              <button
-                id="polygonModeBtn"
-                class="button mode"
-                aria-pressed="false"
-                type="button"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linejoin="round"
-                >
-                  <path d="m4 17 6-12 10 5-4 10-12-3Z" />
-                  <circle cx="4" cy="17" r="1.4" fill="currentColor" />
-                  <circle cx="10" cy="5" r="1.4" fill="currentColor" />
-                  <circle cx="20" cy="10" r="1.4" fill="currentColor" />
-                </svg>
-                <span>Polygon</span>
+              <button id="polygonModeBtn" class="button mode" aria-pressed="false" type="button" title="Polygon (P)">
+                <svg><use href="#i-polygon" /></svg><span>Polygon</span><kbd>P</kbd>
               </button>
             </div>
-            <div class="field-label">Warna bentuk baru</div>
-            <label class="color-input-wrap" for="newColor"
-              ><input
-                type="color"
-                id="newColor"
-                value="#ef4444"
-                aria-label="Warna polygon baru" /><span id="newColorHex"
-                >#EF4444</span
-              ><svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-              >
-                <path d="m7 10 5 5 5-5" /></svg
-            ></label>
             <div class="draft-actions hidden" id="draftActions">
               <div class="hint">
-                <strong id="draftCount">0 titik</strong> dipilih · minimal 3
-                titik.
+                <strong id="draftCount">0 titik</strong> · minimal 3. <kbd>⌫</kbd> hapus titik terakhir.
               </div>
               <div class="action-row">
-                <button
-                  type="button"
-                  class="button button-primary"
-                  id="finishPolygonBtn"
-                >
-                  Selesai <kbd>↵</kbd></button
-                ><button
-                  type="button"
-                  class="button button-outline"
-                  id="cancelPolygonBtn"
-                >
-                  Batal
-                </button>
+                <button type="button" class="button button-primary" id="finishPolygonBtn">Selesai <kbd>↵</kbd></button>
+                <button type="button" class="button button-outline" id="cancelPolygonBtn">Batal <kbd>Esc</kbd></button>
               </div>
             </div>
-          </section>
-
-          <section class="sidebar-section">
-            <div class="section-heading"><h2>Canvas settings</h2></div>
-            <label class="field-label" for="viewportSelect">Viewport</label>
-            <select
-              id="viewportSelect"
-              class="select"
-              aria-label="Ukuran viewport referensi"
-            >
-              <option value="800x600" selected>800 × 600 (4:3)</option>
-              <option value="640x480">640 × 480 (4:3)</option>
-              <option value="1280x720">1280 × 720 (16:9)</option>
-              <option value="600x600">600 × 600 (1:1)</option>
-            </select>
-            <label class="toggle-row" for="snapToggle"
-              ><span>Snap to grid</span
-              ><input type="checkbox" id="snapToggle" checked /><span
-                class="switch-track"
-                aria-hidden="true"
-              ></span
-            ></label>
-            <label class="toggle-row" for="gridToggle"
-              ><span>Show grid</span
-              ><input type="checkbox" id="gridToggle" checked /><span
-                class="switch-track"
-                aria-hidden="true"
-              ></span
-            ></label>
           </section>
 
           <section class="sidebar-section objects-section">
@@ -136,280 +88,224 @@
               <h2>Layers</h2>
               <span class="counter" id="shapeCount">0</span>
             </div>
-            <div
-              class="shape-list"
-              id="shapeList"
-              aria-label="Daftar polygon"
-            ></div>
-            <div class="selected-editor hidden" id="selectedEditor">
-              <div class="property-heading">Properties</div>
-              <label class="field-label" for="shapeName">Nama objek</label>
-              <input
-                id="shapeName"
-                class="input"
-                type="text"
-                maxlength="60"
-                aria-label="Nama polygon"
-              />
-              <div class="property-row">
-                <label for="shapeColor">Warna</label
-                ><input type="color" id="shapeColor" aria-label="Warna objek" />
-              </div>
-              <div class="property-row">
-                <span>Susunan layer</span>
-                <div class="action-row compact">
-                  <button
-                    type="button"
-                    class="button button-outline icon-button"
-                    id="layerDownBtn"
-                    title="Kirim ke belakang"
-                    aria-label="Kirim ke belakang"
-                  >
-                    ↓</button
-                  ><button
-                    type="button"
-                    class="button button-outline icon-button"
-                    id="layerUpBtn"
-                    title="Bawa ke depan"
-                    aria-label="Bawa ke depan"
-                  >
-                    ↑
-                  </button>
-                </div>
-              </div>
-              <div class="selected-vertex hidden" id="selectedVertexEditor">
-                <div class="field-label">
-                  Vertex terpilih <span id="selectedVertexIndex"></span>
-                </div>
-                <div class="coordinate-fields">
-                  <label
-                    >X
-                    <input
-                      type="number"
-                      step="0.05"
-                      min="-1"
-                      max="1"
-                      id="vertexX"
-                      class="input"
-                  /></label>
-                  <label
-                    >Y
-                    <input
-                      type="number"
-                      step="0.05"
-                      min="-1"
-                      max="1"
-                      id="vertexY"
-                      class="input"
-                  /></label>
-                </div>
-              </div>
-              <div class="action-row">
-                <button
-                  class="button button-outline"
-                  type="button"
-                  id="duplicateBtn"
-                >
-                  Duplikat</button
-                ><button
-                  class="button button-danger"
-                  type="button"
-                  id="deleteBtn"
-                >
-                  Hapus
-                </button>
-              </div>
-            </div>
+            <div class="shape-list" id="shapeList" aria-label="Daftar polygon"></div>
           </section>
-          <div class="sidebar-help">
-            <div class="shortcuts">
-              <kbd>Enter</kbd> selesai <kbd>Esc</kbd> batal
-              <kbd>Ctrl Z</kbd> undo
+
+          <!-- Contextual properties: only shown with a selection -->
+          <section class="sidebar-section hidden" id="propertiesSection" aria-label="Properti objek">
+            <div class="row-between">
+              <h2 id="propertiesTitle">Properties</h2>
+              <span class="counter" id="selectionCount">1</span>
             </div>
-          </div>
+            <div id="singleProps">
+              <label class="field-label" for="shapeName">Nama objek</label>
+              <input id="shapeName" class="input" type="text" maxlength="60" aria-label="Nama polygon" />
+            </div>
+            <div class="field-label">Posisi pusat &amp; ukuran (NDC)</div>
+            <div class="num-grid">
+              <label>X<input id="propX" class="input" type="number" step="0.05" min="-1" max="1" /></label>
+              <label>Y<input id="propY" class="input" type="number" step="0.05" min="-1" max="1" /></label>
+              <label>W<input id="propW" class="input" type="number" step="0.05" min="0.001" max="2" /></label>
+              <label>H<input id="propH" class="input" type="number" step="0.05" min="0.001" max="2" /></label>
+            </div>
+            <label class="inline-check"><input type="checkbox" id="aspectLock" /> Kunci rasio W:H</label>
+
+            <details class="sub-details" id="transformDetails" open>
+              <summary id="transformTools">Rotasi, skala &amp; flip<svg class="chev"><use href="#i-chevron" /></svg></summary>
+              <div class="transform-row">
+                <label class="input-suffix" title="Sudut rotasi (derajat, positif = berlawanan jarum jam)"><input id="rotateInput" class="input" type="number" step="1" value="15" aria-label="Sudut rotasi" /><span>°</span></label>
+                <button class="button button-outline icon-button" id="rotateCcwBtn" type="button" title="Putar berlawanan jarum jam" aria-label="Putar berlawanan jarum jam"><svg><use href="#i-rot-ccw" /></svg></button>
+                <button class="button button-outline icon-button" id="rotateCwBtn" type="button" title="Putar searah jarum jam" aria-label="Putar searah jarum jam"><svg><use href="#i-rot-cw" /></svg></button>
+              </div>
+              <div class="chip-row" role="group" aria-label="Preset rotasi">
+                <button class="chip" type="button" data-rotate="45">45°</button>
+                <button class="chip" type="button" data-rotate="90">90°</button>
+                <button class="chip" type="button" data-rotate="180">180°</button>
+                <button class="chip" type="button" data-rotate="-90">−90°</button>
+              </div>
+              <div class="transform-row">
+                <label class="input-suffix" title="Skala relatif (%)"><input id="scaleInput" class="input" type="number" step="5" min="1" value="110" aria-label="Skala persen" /><span>%</span></label>
+                <button class="button button-outline" id="scaleApplyBtn" type="button" title="Skala seragam dari pusat seleksi">Skala</button>
+                <button class="button button-outline icon-button" type="button" id="flipHBtn" title="Flip horizontal" aria-label="Flip horizontal"><svg><use href="#i-flip-h" /></svg></button>
+                <button class="button button-outline icon-button" type="button" id="flipVBtn" title="Flip vertikal" aria-label="Flip vertikal"><svg><use href="#i-flip-v" /></svg></button>
+              </div>
+            </details>
+
+            <div id="alignSection" class="hidden">
+              <div class="field-label">Align &amp; distribute</div>
+              <div class="icon-strip" role="group" aria-label="Align">
+                <button class="button button-ghost icon-button sm" type="button" data-align="left" title="Align left" aria-label="Align left"><svg><use href="#i-al-left" /></svg></button>
+                <button class="button button-ghost icon-button sm" type="button" data-align="hcenter" title="Align horizontal center" aria-label="Align horizontal center"><svg><use href="#i-al-hcenter" /></svg></button>
+                <button class="button button-ghost icon-button sm" type="button" data-align="right" title="Align right" aria-label="Align right"><svg><use href="#i-al-right" /></svg></button>
+                <button class="button button-ghost icon-button sm" type="button" data-align="top" title="Align top" aria-label="Align top"><svg><use href="#i-al-top" /></svg></button>
+                <button class="button button-ghost icon-button sm" type="button" data-align="vcenter" title="Align vertical center" aria-label="Align vertical center"><svg><use href="#i-al-vcenter" /></svg></button>
+                <button class="button button-ghost icon-button sm" type="button" data-align="bottom" title="Align bottom" aria-label="Align bottom"><svg><use href="#i-al-bottom" /></svg></button>
+                <button class="button button-ghost icon-button sm" type="button" id="distHBtn" title="Distribute horizontally (min. 3)" aria-label="Distribute horizontally"><svg><use href="#i-dist-h" /></svg></button>
+                <button class="button button-ghost icon-button sm" type="button" id="distVBtn" title="Distribute vertically (min. 3)" aria-label="Distribute vertically"><svg><use href="#i-dist-v" /></svg></button>
+              </div>
+            </div>
+
+            <div class="selected-vertex hidden" id="selectedVertexEditor">
+              <div class="field-label row-between"><span>Vertex terpilih <span id="selectedVertexIndex"></span></span><button type="button" class="chip" id="deleteVertexBtn" title="Hapus titik (Delete)">Hapus titik</button></div>
+              <div class="num-grid two">
+                <label>X<input type="number" step="0.05" min="-1" max="1" id="vertexX" class="input" /></label>
+                <label>Y<input type="number" step="0.05" min="-1" max="1" id="vertexY" class="input" /></label>
+              </div>
+            </div>
+
+            <div class="property-row">
+              <span>Layer</span>
+              <div class="action-row compact">
+                <button type="button" class="button button-outline icon-button sm" id="layerDownBtn" title="Kirim ke belakang" aria-label="Kirim ke belakang"><svg><use href="#i-down" /></svg></button>
+                <button type="button" class="button button-outline icon-button sm" id="layerUpBtn" title="Bawa ke depan" aria-label="Bawa ke depan"><svg><use href="#i-up" /></svg></button>
+                <button type="button" class="button button-outline icon-button sm" id="groupBtn" title="Group (Ctrl+G) / Ungroup (Ctrl+Shift+G)" aria-label="Group"><svg><use href="#i-group" /></svg></button>
+              </div>
+            </div>
+            <div class="action-row">
+              <button class="button button-outline" type="button" id="duplicateBtn" title="Duplikat (Ctrl+D)">Duplikat</button>
+              <button class="button button-danger" type="button" id="deleteBtn" title="Hapus (Delete)">Hapus</button>
+            </div>
+            <p class="subtext">Klik ganda di sisi polygon untuk menambah titik.</p>
+          </section>
+
+          <details class="sidebar-section collapsible" id="colorSection" open>
+            <summary><h2>Warna</h2><span class="current-color"><span class="swatch-dot" id="currentColorDot"></span><span id="newColorHex">#EF4444</span></span><svg class="chev"><use href="#i-chevron" /></svg></summary>
+            <div id="palette" class="palette" aria-label="Palet warna"></div>
+            <div class="field-label">Terakhir dipakai</div>
+            <div id="recentColors" class="swatch-row"></div>
+            <div class="color-custom">
+              <input type="color" id="newColor" value="#ef4444" aria-label="Pilih warna kustom" title="Warna kustom" />
+              <input type="text" id="hexInput" class="input mono" maxlength="7" spellcheck="false" aria-label="Kode HEX" value="#EF4444" />
+            </div>
+            <p class="subtext" id="colorHint">Warna dipakai untuk polygon baru.</p>
+          </details>
+
+          <details class="sidebar-section collapsible" open>
+            <summary><h2>Canvas</h2><svg class="chev"><use href="#i-chevron" /></svg></summary>
+            <label class="field-label" for="viewportSelect">Viewport OpenGL</label>
+            <select id="viewportSelect" class="select" aria-label="Ukuran viewport referensi">
+              <option value="800x600" selected>800 × 600 (4:3)</option>
+              <option value="640x480">640 × 480 (4:3)</option>
+              <option value="1280x720">1280 × 720 (16:9)</option>
+              <option value="600x600">600 × 600 (1:1)</option>
+            </select>
+            <label class="toggle-row" for="snapToggle"><span>Snap to grid (0.05)</span><input type="checkbox" id="snapToggle" checked /><span class="switch-track" aria-hidden="true"></span></label>
+            <label class="toggle-row" for="gridToggle"><span>Show grid</span><input type="checkbox" id="gridToggle" checked /><span class="switch-track" aria-hidden="true"></span></label>
+          </details>
+
         </aside>
 
+        <!-- ============ CENTER: toolbar + canvas ============ -->
         <section class="main-panel" aria-label="Canvas editor">
           <div class="canvas-toolbar">
-            <div class="history-actions">
-              <button
-                class="button button-outline icon-button"
-                id="undoBtn"
-                type="button"
-                title="Undo (Ctrl+Z)"
-                aria-label="Undo"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M9 14 4 9l5-5" />
-                  <path d="M4 9h10a6 6 0 0 1 0 12h-2" />
-                </svg>
-              </button>
-              <button
-                class="button button-outline icon-button"
-                id="redoBtn"
-                type="button"
-                title="Redo (Ctrl+Y)"
-                aria-label="Redo"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="m15 14 5-5-5-5" />
-                  <path d="M20 9H10a6 6 0 0 0 0 12h2" />
-                </svg>
-              </button>
+            <div class="toolbar-group">
+              <button class="button button-ghost icon-button" id="toggleLeftBtn" type="button" title="Tampilkan/sembunyikan panel kiri" aria-label="Panel kiri" aria-pressed="true"><svg><use href="#i-panel-left" /></svg></button>
+              <span class="toolbar-sep"></span>
+              <button class="button button-ghost icon-button" id="undoBtn" type="button" title="Undo (Ctrl+Z)" aria-label="Undo"><svg><use href="#i-undo" /></svg></button>
+              <button class="button button-ghost icon-button" id="redoBtn" type="button" title="Redo (Ctrl+Shift+Z / Ctrl+Y)" aria-label="Redo"><svg><use href="#i-redo" /></svg></button>
+            </div>
+            <div class="toolbar-group contextual" id="contextToolbar" aria-label="Aksi seleksi">
+              <button class="button button-ghost icon-button" data-act="rotateCcw" type="button" title="Putar −90°" aria-label="Putar −90°"><svg><use href="#i-rot-ccw" /></svg></button>
+              <button class="button button-ghost icon-button" data-act="rotateCw" type="button" title="Putar 90°" aria-label="Putar 90°"><svg><use href="#i-rot-cw" /></svg></button>
+              <button class="button button-ghost icon-button" data-act="flipH" type="button" title="Flip horizontal" aria-label="Flip horizontal"><svg><use href="#i-flip-h" /></svg></button>
+              <button class="button button-ghost icon-button" data-act="flipV" type="button" title="Flip vertikal" aria-label="Flip vertikal"><svg><use href="#i-flip-v" /></svg></button>
+              <span class="toolbar-sep"></span>
+              <button class="button button-ghost icon-button" data-act="duplicate" type="button" title="Duplikat (Ctrl+D)" aria-label="Duplikat"><svg><use href="#i-copy" /></svg></button>
+              <button class="button button-ghost icon-button danger" data-act="delete" type="button" title="Hapus (Delete)" aria-label="Hapus"><svg><use href="#i-trash" /></svg></button>
+            </div>
+            <div class="toolbar-group">
+              <div class="menu-wrap">
+                <button class="button button-ghost icon-button" id="helpBtn" type="button" title="Bantuan" aria-label="Bantuan" aria-haspopup="menu" aria-expanded="false"><svg><use href="#i-help" /></svg></button>
+                <div class="menu hidden" id="helpMenu" role="menu">
+                  <button type="button" role="menuitem" id="showTutorialBtn">Tampilkan tutorial</button>
+                  <button type="button" role="menuitem" id="showShortcutsBtn">Pintasan keyboard <kbd>?</kbd></button>
+                </div>
+              </div>
+              <button class="button button-ghost icon-button" id="themeToggleBtn" type="button" aria-label="Aktifkan mode gelap" title="Ganti tema"><svg><use id="themeIcon" href="#i-moon" /></svg></button>
+              <span class="toolbar-sep"></span>
+              <button class="button button-ghost icon-button" id="toggleRightBtn" type="button" title="Tampilkan/sembunyikan panel output" aria-label="Panel output" aria-pressed="true"><svg><use href="#i-panel-right" /></svg></button>
             </div>
           </div>
-          <div class="stage-area">
+          <div class="stage-area" id="stageArea">
             <div class="canvas-frame" id="canvasFrame">
-              <canvas
-                id="canvas"
-                aria-label="Editor geometri polygon"
-                tabindex="0"
-              ></canvas>
+              <canvas id="canvas" aria-label="Editor geometri polygon" tabindex="0"></canvas>
               <div class="canvas-corner">X → &nbsp; Y ↑</div>
+              <div class="zoom-widget" id="zoomWidget" role="group" aria-label="Zoom">
+                <button type="button" id="zoomOutBtn" title="Zoom out (Ctrl+−)" aria-label="Zoom out">−</button>
+                <div class="menu-wrap">
+                  <button type="button" id="zoomLabel" title="Opsi zoom" aria-haspopup="menu" aria-expanded="false">100%</button>
+                  <div class="menu up hidden" id="zoomMenu" role="menu">
+                    <button type="button" role="menuitem" data-zoom="1">Zoom ke 100% <kbd>Ctrl 0</kbd></button>
+                    <button type="button" role="menuitem" data-zoom="fit">Fit to view <kbd>Shift 1</kbd></button>
+                    <div class="menu-sep"></div>
+                    <div class="menu-presets" id="zoomPresets"></div>
+                  </div>
+                </div>
+                <button type="button" id="zoomInBtn" title="Zoom in (Ctrl++)" aria-label="Zoom in">+</button>
+                <button type="button" id="fitBtn" title="Fit to view (Shift+1)" aria-label="Fit to view"><svg><use href="#i-fit" /></svg></button>
+              </div>
             </div>
           </div>
           <div class="canvas-footer">
-            <span class="coordinate-pill" id="cursorPosition"
-              >X: — &nbsp; Y: —</span
-            ><span id="editorStatus" role="status"
-              >Pilih Polygon untuk menambah bentuk.</span
-            >
+            <span class="coordinate-pill" id="cursorPosition">X: — &nbsp; Y: —</span>
+            <span id="editorStatus" role="status">Pilih Polygon untuk menambah bentuk.</span>
           </div>
           <div class="info-row">
             <div><strong id="vertexCount">0</strong><span>Vertices</span></div>
-            <div>
-              <strong id="triangleCount">0</strong><span>Triangles</span>
-            </div>
+            <div><strong id="triangleCount">0</strong><span>Triangles</span></div>
             <div><strong id="indexCount">0</strong><span>Indices</span></div>
-            <div>
-              <strong id="ratioLabel">4:3</strong><span>Aspect ratio</span>
-            </div>
+            <div><strong id="ratioLabel">4:3</strong><span>Aspect ratio</span></div>
           </div>
         </section>
 
-        <aside class="panel export-panel" aria-label="Ekspor kode">
+        <!-- ============ RIGHT: output ============ -->
+        <aside class="panel export-panel" id="exportPanel" aria-label="Ekspor kode">
           <div class="section-heading export-heading">
-            <div><div class="eyebrow">OUTPUT</div></div>
+            <h2>Output</h2>
+            <span class="subtext" id="hiddenNote"></span>
           </div>
-
-          <label class="field-label" for="codeOutput"
-            >Vertices &amp; indices</label
-          >
+          <label class="toggle-row compact-toggle" for="snippetToggle"><span>Sertakan kode setup OpenGL (VAO/VBO/EBO)</span><input type="checkbox" id="snippetToggle" /><span class="switch-track" aria-hidden="true"></span></label>
+          <label class="field-label" for="codeOutput">Vertices &amp; indices</label>
           <div class="code-frame">
-            <div class="code-header">
-              <span class="code-dot"></span> mesh.cpp
-              <span class="code-lang">C++</span>
-            </div>
-            <textarea
-              id="codeOutput"
-              class="code-output"
-              readonly
-              spellcheck="false"
-              wrap="off"
-              aria-label="Kode C++ vertices dan indices"
-            ></textarea>
+            <div class="code-header"><span class="code-dot"></span> mesh.cpp <span class="code-lang">C++</span></div>
+            <textarea id="codeOutput" class="code-output" readonly spellcheck="false" wrap="off" aria-label="Kode C++ vertices dan indices"></textarea>
           </div>
-          <button id="copyBtn" class="button button-primary full" type="button">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <rect x="8" y="8" width="12" height="12" rx="2" />
-              <path
-                d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"
-              />
-            </svg>
-            Salin kode C++
-          </button>
+          <button id="copyBtn" class="button button-primary full" type="button"><svg><use href="#i-copy" /></svg>Salin kode C++</button>
           <div class="export-buttons">
-            <button
-              id="cppDownloadBtn"
-              class="button button-outline"
-              type="button"
-            >
-              Download .h</button
-            ><button
-              id="jsonDownloadBtn"
-              class="button button-outline"
-              type="button"
-            >
-              Simpan JSON
-            </button>
+            <button id="cppDownloadBtn" class="button button-outline" type="button">Download .h</button>
+            <button id="jsonDownloadBtn" class="button button-outline" type="button" title="Simpan project (Ctrl+S)">Simpan JSON</button>
           </div>
           <div class="extra-actions">
-            <button
-              id="jsonImportBtn"
-              class="button button-outline full"
-              type="button"
-            >
-              Buka project JSON</button
-            ><input
-              id="jsonInput"
-              type="file"
-              accept=".json,application/json"
-              hidden
-            /><button
-              id="pngDownloadBtn"
-              class="button button-outline full"
-              type="button"
-            >
-              Download preview PNG
-            </button>
+            <button id="jsonImportBtn" class="button button-outline full" type="button" title="Buka project (Ctrl+O)">Buka project JSON</button>
+            <input id="jsonInput" type="file" accept=".json,application/json" hidden />
+            <button id="pngDownloadBtn" class="button button-outline full" type="button">Download preview PNG</button>
           </div>
+          <p class="subtext" id="autosaveNote">Perubahan disimpan otomatis di perangkat ini.</p>
           <div class="bottom-actions">
-            <button
-              class="button button-ghost icon-button"
-              id="themeToggleBtn"
-              type="button"
-              aria-label="Aktifkan mode gelap"
-              title="Ganti tema"
-            >
-              <svg
-                id="themeIcon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M20.9 13.2A9 9 0 0 1 10.8 3.1 9 9 0 1 0 20.9 13.2Z" />
-              </svg>
-            </button>
-            <button class="button button-outline" id="resetBtn" type="button">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-              >
-                <path d="M3 12a9 9 0 1 0 2.6-6.4L3 8" />
-                <path d="M3 3v5h5" />
-              </svg>
-              <span>Reset</span>
-            </button>
+            <button class="button button-outline" id="resetBtn" type="button" title="Ganti canvas dengan contoh rumah (bisa di-undo)"><svg><use href="#i-rot-ccw" /></svg><span>Reset contoh</span></button>
           </div>
         </aside>
       </main>
     </div>
+
+    <!-- Keyboard shortcuts -->
+    <dialog id="shortcutsDialog" class="dialog" aria-labelledby="shortcutsTitle">
+      <div class="dialog-head"><h2 id="shortcutsTitle">Pintasan keyboard</h2><button type="button" class="button button-ghost icon-button sm" data-close aria-label="Tutup">✕</button></div>
+      <dl class="shortcut-list" id="shortcutList"></dl>
+    </dialog>
+
+    <!-- First-launch guide: floating, non-blocking -->
+    <div class="tour hidden" id="tour" role="dialog" aria-labelledby="tourTitle" aria-live="polite">
+      <div class="tour-progress" id="tourProgress"></div>
+      <h3 id="tourTitle"></h3>
+      <div class="tour-body" id="tourBody"></div>
+      <div class="tour-actions">
+        <button type="button" class="button button-ghost" id="tourSkip">Lewati</button>
+        <span class="spacer"></span>
+        <button type="button" class="button button-outline" id="tourBack">Kembali</button>
+        <button type="button" class="button button-primary" id="tourNext">Lanjut</button>
+      </div>
+    </div>
+    <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
   </body>
 </html>
