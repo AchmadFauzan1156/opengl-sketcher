@@ -9,7 +9,7 @@ A simple 2D polygon editor for creating geometry and generating vertices and ind
 - Close a polygon by clicking its first point; crossing edges are flagged red and rejected while drawing
 - Double-click an edge to insert a vertex, select a vertex and press Delete to remove it
 - Multi-selection (Shift+click, marquee, Ctrl+A), copy / cut / paste / duplicate
-- Move, nudge, rotate, resize, flip, align and distribute — every result is validated
+- Move, nudge, rotate, resize, flip, align and distribute - every result is validated
 - Zoom (25%–800%, cursor-anchored) and pan, fit to view
 - Layers with visibility, lock, grouping and ordering
 - Colour palette with HEX input and recent colours
