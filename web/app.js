@@ -1545,7 +1545,7 @@ const tour = (() => {
     {
       title: "Zoom & pan",
       target: "zoomWidget",
-      body: "<ul><li>Scroll untuk zoom di posisi kursor.</li><li><kbd>Space</kbd>+drag atau klik tengah untuk pan.</li><li>Tombol −/+ dan menu persentase; <kbd>Ctrl 0</kbd> reset, <kbd>Shift 1</kbd> fit.</li></ul><p>Zoom hanya tampilan - tidak mengubah koordinat atau ekspor.</p>",
+      body: "<ul><li>Scroll untuk zoom di posisi kursor.</li><li><kbd>Space</kbd>+drag atau klik tengah untuk pan.</li><li>Tombol −/+ dan menu persentase; <kbd>Ctrl 0</kbd> reset, <kbd>Shift 1</kbd> fit.</li></ul><p>Zoom hanya tampilan, tidak mengubah koordinat atau ekspor.</p>",
     },
     {
       title: "Pintasan keyboard",
