@@ -1,6 +1,6 @@
 {
   "name": "opengl-sketcher",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A lightweight 2D polygon editor for OpenGL",
   "main": "index.js",
   "scripts": {
