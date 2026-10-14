@@ -1,15 +1,17 @@
 {
   "name": "opengl-sketcher",
   "version": "1.0.0",
-  "description": "",
+  "description": "A lightweight 2D polygon editor for OpenGL",
   "main": "index.js",
   "scripts": {
     "dev": "npx tauri dev",
-    "build": "npx tauri build"
+    "build": "npx tauri build",
+    "test": "node --test \"tests/*.test.js\"",
+    "check": "node --check web/geometry.js && node --check web/viewport.js && node --check web/editor.js && node --check web/shortcuts.js && node --check web/app.js"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "module",
   "devDependencies": {
     "@tauri-apps/cli": "^2.12.1"
